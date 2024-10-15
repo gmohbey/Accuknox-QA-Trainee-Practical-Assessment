@@ -23,11 +23,11 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker buildx build --load -t ghcr.io/gaganmohbey/wisecow-app:latest -f "Problem Statement 1/wisecow-app/Dockerfile" "Problem Statement 1/wisecow-app/"
+          docker buildx build --load -t ghcr.io/gmohbey/wisecow-app:latest -f "Problem Statement 1/wisecow-app/Dockerfile" "Problem Statement 1/wisecow-app/"
 
       - name: Push Docker image
         run: |
-          docker push ghcr.io/gaganmohbey/wisecow-app:latest
+          docker push ghcr.io/gmohbey/wisecow-app:latest
 
   deploy:
     needs: build-and-push
