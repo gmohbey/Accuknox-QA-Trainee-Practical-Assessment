@@ -1,0 +1,73 @@
+name: CI/CD for Wisecow Application
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GIT_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker buildx build --load -t ghcr.io/gaganmohbey/wisecow-app:latest -f "Problem Statement 1/wisecow-app/Dockerfile" "Problem Statement 1/wisecow-app/"
+
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/gaganmohbey/wisecow-app:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Install Kind
+      - name: Install Kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      # Create Kind cluster
+      - name: Create Kind cluster
+        run: kind create cluster
+
+      # Check cluster info
+      - name: Check Kubernetes cluster info
+        run: kubectl cluster-info --context kind-kind
+
+      # Generate Self-Signed TLS certificate
+      - name: Generate self-signed TLS certificate
+        run: |
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout tls.key \
+          -out tls.crt \
+          -subj "/CN=www.wisecow-app.com/O=wisecow-app Inc./C=IN"
+
+      # Create TLS Secret
+      - name: Create TLS Secret
+        run: |
+          kubectl create secret tls wisecow-tls --cert=tls.crt --key=tls.key
+
+      # Deploy Wisecow Deployment, Service, and Ingress
+      - name: Deploy Wisecow App
+        run: |
+          kubectl apply -f "Problem Statement 1/wisecow-app/k8s/wisecow-deployment.yaml"
+          kubectl apply -f "Problem Statement 1/wisecow-app/k8s/wisecow-service.yaml"
+          kubectl apply -f "Problem Statement 1/wisecow-app/k8s/wisecow-ingress.yaml"
